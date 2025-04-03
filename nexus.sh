@@ -4,7 +4,7 @@ sudo yum update -y
 sudo yum install wget -y
 sudo yum install java-17-amazon-corretto-headless -y
 sudo mkdir /app && cd /app
-sudo wget -O nexus.tar.gz https://download.sonatype.com/nexus/3/3.70.0.tar.gz
+sudo wget -O nexus.tar.gz https://download.sonatype.com/nexus/3/x86-64-3.78.2-04.tar.gz
 sudo tar -xvf nexus.tar.gz
 sudo mv nexus-3* nexus
 sudo adduser nexus
