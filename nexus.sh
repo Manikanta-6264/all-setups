@@ -1,35 +1,53 @@
-#create amazonlinux ec2 with t2.micro and 30 gb of ebs with port 8081 
+#!/bin/bash
 
-sudo yum update -y
-sudo yum install wget -y
-sudo yum install java-17-amazon-corretto-headless -y
-sudo mkdir /app && cd /app
-sudo wget -O nexus.tar.gz https://download.sonatype.com/nexus/3/x86-64-3.78.2-04.tar.gz
-sudo tar -xvf nexus.tar.gz
-sudo mv nexus-3* nexus
-sudo adduser nexus
-sudo chown -R nexus:nexus /app/nexus
-sudo chown -R nexus:nexus /app/sonatype-work
-sudo echo "run_as_user="nexus"" > /app/nexus/bin/nexus.rc
-sudo tee /etc/systemd/system/nexus.service > /dev/null << EOL
+# Exit on any error
+set -e
+
+echo "➡ Switching to /opt"
+cd /opt
+
+echo "➡ Cleaning old /opt/nexus if it exists"
+sudo mv /opt/nexus /opt/nexus.broken 2>/dev/null || true
+
+echo "➡ Downloading Nexus"
+sudo wget https://download.sonatype.com/nexus/3/nexus-unix-x86-64-3.79.0-09.tar.gz
+
+echo "➡ Extracting Nexus"
+sudo tar -xvzf nexus-unix-x86-64-3.79.0-09.tar.gz
+sudo mv nexus-3.79.0-09 nexus
+
+echo "➡ Creating nexus user"
+sudo useradd -M -d /opt/nexus -s /bin/bash nexus || true
+
+echo "➡ Setting ownership"
+sudo mkdir -p /opt/sonatype-work
+sudo chown -R nexus:nexus /opt/nexus /opt/sonatype-work
+
+echo "➡ Setting run_as_user"
+echo 'run_as_user="nexus"' | sudo tee /opt/nexus/bin/nexus.rc
+
+echo "➡ Creating systemd service"
+sudo tee /etc/systemd/system/nexus.service > /dev/null <<EOF
 [Unit]
-Description=nexus service
+Description=Nexus Repository Manager
 After=network.target
 
 [Service]
 Type=forking
 LimitNOFILE=65536
-User=nexus
-Group=nexus
-ExecStart=/app/nexus/bin/nexus start
-ExecStop=/app/nexus/bin/nexus stop
+ExecStart=/opt/nexus/bin/nexus start
+ExecStop=/opt/nexus/bin/nexus stop
 User=nexus
 Restart=on-abort
 
 [Install]
 WantedBy=multi-user.target
-EOL
-sudo chkconfig nexus on
-sudo systemctl start nexus
-sudo systemctl status nexus
+EOF
 
+echo "➡ Enabling and starting Nexus"
+sudo systemctl daemon-reload
+sudo systemctl enable nexus
+sudo systemctl start nexus
+
+echo "✅ Nexus installation complete"
+sudo systemctl status nexus
